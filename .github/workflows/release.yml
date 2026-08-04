@@ -34,27 +34,35 @@ jobs:
       - name: Build library
         run: npm run build:lib
 
+      - name: Normalize version
+        id: ver
+        run: echo "version=${RAW_VERSION#v}" >> "$GITHUB_OUTPUT"
+        env:
+          RAW_VERSION: ${{ inputs.version }}
+
       - name: Bump version in package.json
-        run: npm version ${{ inputs.version }} --no-git-tag-version
+        run: npm version ${{ steps.ver.outputs.version }} --no-git-tag-version
 
       - name: Commit version bump
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git stash
           git pull --rebase origin main
+          git stash pop
           git add package.json package-lock.json
-          git commit -m "chore: release v${{ inputs.version }}"
+          git commit -m "chore: release v${{ steps.ver.outputs.version }}"
           git push
 
       - name: Create and push git tag
         run: |
-          git tag "v${{ inputs.version }}"
-          git push origin "v${{ inputs.version }}"
+          git tag "v${{ steps.ver.outputs.version }}"
+          git push origin "v${{ steps.ver.outputs.version }}"
 
       - name: Create GitHub Release
         run: |
-          gh release create "v${{ inputs.version }}" \
-            --title "v${{ inputs.version }}" \
+          gh release create "v${{ steps.ver.outputs.version }}" \
+            --title "v${{ steps.ver.outputs.version }}" \
             --generate-notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
