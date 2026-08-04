@@ -1,6 +1,6 @@
 {
   "name": "@rakutenrewards/standdown-poc",
-  "version": "0.0.1",
+  "version": "0.0.4",
   "description": "Standdown POC - Next.js component library",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
