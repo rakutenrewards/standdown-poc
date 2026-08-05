@@ -17,22 +17,16 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "24.x"
           registry-url: "https://npm.pkg.github.com"
           scope: "@rakutenrewards"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build library
-        run: npm run build:lib
 
       - name: Normalize version
         id: ver
@@ -40,10 +34,16 @@ jobs:
         env:
           RAW_VERSION: ${{ inputs.version }}
 
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build library
+        run: npm run build:lib
+
       - name: Bump version in package.json
         run: npm version ${{ steps.ver.outputs.version }} --no-git-tag-version
 
-      - name: Commit version bump
+      - name: Commit and push version bump
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -52,20 +52,19 @@ jobs:
           git stash pop
           git add package.json package-lock.json
           git commit -m "chore: release v${{ steps.ver.outputs.version }}"
-          git push
-
-      - name: Create and push git tag
-        run: |
+          git tag -d "v${{ steps.ver.outputs.version }}" 2>/dev/null || true
+          git push origin --delete "v${{ steps.ver.outputs.version }}" 2>/dev/null || true
           git tag "v${{ steps.ver.outputs.version }}"
-          git push origin "v${{ steps.ver.outputs.version }}"
+          git push origin main "v${{ steps.ver.outputs.version }}"
 
       - name: Create GitHub Release
-        run: |
-          gh release create "v${{ steps.ver.outputs.version }}" \
-            --title "v${{ steps.ver.outputs.version }}" \
-            --generate-notes
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: "v${{ steps.ver.outputs.version }}"
+          name: "v${{ steps.ver.outputs.version }}"
+          generate_release_notes: true
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to GitHub Packages
         run: npm publish --access public
